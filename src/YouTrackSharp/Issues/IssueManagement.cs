@@ -85,7 +85,53 @@ namespace YouTrackSharp.Issues
 			}
 		}
 
-		public string CreateIssue(Issue issue)
+        /// <summary>
+		/// Retrieve an issue by id
+		/// </summary>
+		/// <param name="issueId">Id of the issue to retrieve</param>
+		/// <returns>An instance of Issue if successful or InvalidRequestException if issues is not found</returns>
+		public IEnumerable<Workitem> GetWorkitemsForIssue(string issueId)
+        {
+            try
+            {
+                dynamic response = _connection.Get<ExpandoObject[]>(String.Format("issue/{0}/timetracking/workitem/", issueId));
+                
+                var work = new List<Workitem>();
+                
+                if (response != null)
+                {
+                    foreach (var item in response)
+                    {
+                        var oo = (IDictionary<string, object>)item;
+                        var w = new Workitem();
+                        w.url = (string)oo["url"];
+                        w.id = (string)oo["id"];
+
+                        var d = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                        w.date = d.AddMilliseconds((Int64)oo["date"]);
+                        
+                        w.duration = (int)oo["duration"];
+                        w.description = (string)oo["description"];
+
+                        var t = (IDictionary<string, object>)((ExpandoObject)oo["author"]);
+                        w.author = (string)(t["login"]);
+                        
+                        w.worktype = (string)oo["worktype"];
+                        work.Add(w);
+                    }
+                    
+                    return work;
+                }
+                return null;
+            }
+            catch (HttpException exception)
+            {
+                throw new InvalidRequestException(
+                        String.Format(Language.YouTrackClient_GetIssue_Issue_not_found___0_, issueId), exception);
+            }
+        }
+
+        public string CreateIssue(Issue issue)
 		{
 			if (!_connection.IsAuthenticated)
 			{
